@@ -87,86 +87,86 @@ Data contribution, edit & retrieval is done via a simple HTTP/S REST JSON API.
 
 POST : Response codes 200 OK or 401 Unauthorized
 
-https://thalipriceindex.appspot.com/auth_token : Request body must contain Email, Password : Response body contains JSON AuthToken
+/auth_token : Request body must contain Email, Password : Response body contains JSON AuthToken
 
-https://thalipriceindex.appspot.com/hello (test URI for token auth) : Request header must contain valid authorization token
+/hello (test URI for token auth) : Request header must contain valid authorization token
 
-https://thalipriceindex.appspot.com/logout : Request header must contain valid authorization token
+/logout : Request header must contain valid authorization token
 
 PUT : Response codes 200 OK or 401 Unauthorized
 
-https://thalipriceindex.appspot.com/auth_token : Request header must contain expired token : Response body contains refreshed JSON AuthToken
+/auth_token : Request header must contain expired token : Response body contains refreshed JSON AuthToken
 
 ### CREATE ###
 
 POST JSON : Response 201 Created or 4XX Error. Response body contains Id of created entity
 
-https://thalipriceindex.appspot.com/user : Request body must consist of json with Name, Email, Password
+/user : Request body must consist of json with Name, Email, Password
 
-https://thalipriceindex.appspot.com/venue : Request body must consist of json with Name, Location
+/venue : Request body must consist of json with Name, Location
 
-https://thalipriceindex.appspot.com/thali : Request body must consist of json with 
+/thali : Request body must consist of json with 
 
-https://thalipriceindex.appspot.com/thali/{id} : Request body contains multipart file data
+/thali/{id} : Request body contains multipart file data
 
 ### RETRIEVE ###
 
 GET : Response 200 OK or 404 Not Found
 
-https://thalipriceindex.appspot.com/users?offset=20
+/users?offset=20
 
-https://thalipriceindex.appspot.com/venues?offset=20
+/venues?offset=20
 
-https://thalipriceindex.appspot.com/venue/<id>/thalis?offset=20
+/venue/<id>/thalis?offset=20
 
 OR
 
-https://thalipriceindex.appspot.com/thalis?offset=20&venue=<id>
+/thalis?offset=20&venue=<id>
 
 ### UPDATE ###
 
 PUT : Response 200 OK if update successful or 4XX Error
 
-https://thalipriceindex.appspot.com/user/{id} : Request body contains JSON formatted User : Response body contains Id of updated User
+/user/{id} : Request body contains JSON formatted User : Response body contains Id of updated User
 
-https://thalipriceindex.appspot.com/venue/{id} : Request body contains JSON formatted Venue : Response body contains Id of updated Venue
+/venue/{id} : Request body contains JSON formatted Venue : Response body contains Id of updated Venue
 
-https://thalipriceindex.appspot.com/thali/{id} : Request body contains JSON formatted Thali : Response body contains Id of updated Thali
+/thali/{id} : Request body contains JSON formatted Thali : Response body contains Id of updated Thali
 
 ### DELETE ###
 
 DELETE : Response 204 No Content if successful
 
-https://thalipriceindex.appspot.com/user/{id}
+/user/{id}
 
-https://thalipriceindex.appspot.com/venue/{id}
+/venue/{id}
 
-https://thalipriceindex.appspot.com/thali/{id}
+/thali/{id}
 
 
 ## URLs ##
 
 HTML templates for logs and list of users/venues/thalis are available at:
 
-https://thalipriceindex.appspot.com/logs
+/logs
 
-https://thalipriceindex.appspot.com/list/users
+/list/users
 
-https://thalipriceindex.appspot.com/list/venues
+/list/venues
 
-https://thalipriceindex.appspot.com/list/thalis
+/list/thalis
 
 HTML forms for user/venue/thali creation are available at:
 
-https://thalipriceindex.appspot.com/getform/user
+/getform/user
 
-https://thalipriceindex.appspot.com/getform/venue
+/getform/venue
 
-https://thalipriceindex.appspot.com/getform/thali : using this form directly will assign VenueId field to 0. Use /list/venues and 'Add Thali' instead.
+/getform/thali : using this form directly will assign VenueId field to 0. Use /list/venues and 'Add Thali' instead.
 
 HTML form for upload of image is available at
 
-https://thalipriceindex.appspot.com/list/thalis : select Upload
+/list/thalis : select Upload
 
 ## App  ##
 
