@@ -166,7 +166,11 @@ https://thalipriceindex.appspot.com/list/thalis : select Upload
 <A name="toc1_4" title="App" />
 ## App  ##
 
-Mobile app needs to be very simple. Should use location and camera for posting data. 
+Mobile app needs to be very simple. Dagger v2 for DI is optional. 
+
+Must have basic modules (networking, storage etc.) and Activities/Fragments to allow User to login/register/logou. Simple unobtrusive drop down menu in top right/left corner with option to logout at any time. 
+
+Must have List/Recyclerview of Venues & Thalis. Each entry in list of Venues to be selectable to activate new Thali entry Activity for selected Venue. Each entry in list of Thalis to be selectable to either show an image or signal Intent to Camera to take a photo and upload.
 
 Preferable to avoid any and all javascript in browser version. Need to consider data contributors with older phones/computers so app needs to be very basic. Should have some basic user validationinterface for Google/Facebook oAuth2, some basic data input functionality and ability to post that data to a server. Ability to get data and display tpi at user's location is secondary. 
 
