@@ -10,6 +10,7 @@ A cost of living index for cities across India using user contributed / owned da
     * [Retrieve](#retrieve)
     * [Update](#update)
     * [Delete](#delete)
+- [URLs](#urls)
 - [App](#app) 
 - [Incentives](#incentives)
 - [Gotchas](#gotchas)
