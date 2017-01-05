@@ -1,14 +1,19 @@
-<A name="toc0_1" title="Thali Price Index"/>
 ##  Thali Price Index ##
 A cost of living index for cities across India using user contributed / owned data. TPI v1 focuses on the price of a thali (meal) while v2 will focus on apartment rentals. In theory the platform can be extended to cover all sorts of price data which is otherwise difficult to obtain. 
 
-##Contents     
-**<a href="toc1_1">Methodology</a>**  
-**<a href="toc1_2">Data</a>**  
-**<a href="toc1_3">JSON API</a>**  
-**<a href="toc1_4">App</a>**  
-**<a href="toc1_5">Incentives</a>**  
-**<a href="toc1_6">References</a>**  
+## Contents     
+- [Methodology](#methodology)
+- [Data](#data)
+- [JSONAPI](#jsonapi)
+    * [Validate](#validate)
+    * [Create](#create)
+    * [Retrieve](#retrieve)
+    * [Update](#update)
+    * [Delete](#delete)
+- [App](#app) 
+- [Incentives](#incentives)
+- [Gotchas](#gotchas)
+- [References](#references)  
 
 
 <A name="toc1_1" title="Methodology" />
@@ -73,11 +78,11 @@ We need a appengine datastore access structure and also a Postgres and/or Mongo 
 In the appengine datastore version, Thali is slightly modified to include Id of Venue rather than a Venue (see appengine datastore reference). 
 
 
-<A name="toc1_3" title="JSON API" />
-## Endpoints ##
+## JSONAPI ##
+
 Data contribution, edit & retrieval is done via a simple HTTP/S REST JSON API. 
 
-##VALIDATION##
+### VALIDATE ###
 
 POST : Response codes 200 OK or 401 Unauthorized
 
@@ -91,7 +96,7 @@ PUT : Response codes 200 OK or 401 Unauthorized
 
 https://thalipriceindex.appspot.com/auth_token : Request header must contain expired token : Response body contains refreshed JSON AuthToken
 
-##CREATE (POST ONLY)##
+### CREATE ###
 
 POST JSON : Response 201 Created or 4XX Error. Response body contains Id of created entity
 
@@ -103,7 +108,7 @@ https://thalipriceindex.appspot.com/thali : Request body must consist of json wi
 
 https://thalipriceindex.appspot.com/thali/{id} : Request body contains multipart file data
 
-##RETRIEVE (GET ONLY)##
+### RETRIEVE ###
 
 GET : Response 200 OK or 404 Not Found
 
@@ -117,7 +122,7 @@ OR
 
 https://thalipriceindex.appspot.com/thalis?offset=20&venue=<id>
 
-##UPDATE (PUT ONLY)##
+### UPDATE ###
 
 PUT : Response 200 OK if update successful or 4XX Error
 
@@ -127,7 +132,7 @@ https://thalipriceindex.appspot.com/venue/{id} : Request body contains JSON form
 
 https://thalipriceindex.appspot.com/thali/{id} : Request body contains JSON formatted Thali : Response body contains Id of updated Thali
 
-##DELETE (DELETE ONLY)##
+### DELETE ###
 
 DELETE : Response 204 No Content if successful
 
@@ -138,7 +143,6 @@ https://thalipriceindex.appspot.com/venue/{id}
 https://thalipriceindex.appspot.com/thali/{id}
 
 
-<A name="toc1_3" title="Browser" />
 ## URLs ##
 
 HTML templates for logs and list of users/venues/thalis are available at:
@@ -163,7 +167,6 @@ HTML form for upload of image is available at
 
 https://thalipriceindex.appspot.com/list/thalis : select Upload
 
-<A name="toc1_4" title="App" />
 ## App  ##
 
 Mobile app needs to be very simple. Dagger v2 for DI is optional. 
@@ -179,7 +182,6 @@ Responsiveness of app is of primary importance rather than bells & whistles.
 +Android
 + IOS app 
 
-<A name="toc1_5" title="Incentives" />
 ## Incentives ##
 The starting group of users will be a small number - 30 colleagues, friends, families, willing acquaintances. So no real need to have a super scalable backend. Other users and spammers will hopefully contribute. 
 
@@ -187,12 +189,10 @@ As soon as a user contributes 10 verified/accepted data points, they get access 
 
 Spammers should gain negative reputation for every unverified/unaccepted data point and after 10 such points unable to contribute.
 
-<A name="toc1_6" title="Gotchas" />
 ## Gotchas ##
 
 
 
-<A name="toc1_7" title="References" />
 ## References ##
 + [Writing images to templates](http://www.sanarias.com/blog/1214PlayingwithimagesinHTTPresponseingolang)
 + [Appengine datastore api](https://godoc.org/google.golang.org/appengine/datastore)
