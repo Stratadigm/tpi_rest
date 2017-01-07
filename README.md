@@ -99,11 +99,11 @@ PUT : Response codes 200 OK or 401 Unauthorized
 
 ### CREATE ###
 
-POST JSON : Response 201 Created or 4XX Error. Response body contains Id of created entity
+POST : Response 201 Created or 4XX Error. Response body contains Id of created entity
 
-/user : Request body must consist of json with Name, Email, Password
+/user : Request body must consist of json formatted User {"name": "Bob", "email": "bob@tpi.org", "password":"allurbase"}
 
-/venue : Request body must consist of json with Name, Location
+/venue : Request body must consist of json formatted Venue with Name, appengine.Location
 
 /thali : Request body must consist of json with 
 
@@ -111,17 +111,23 @@ POST JSON : Response 201 Created or 4XX Error. Response body contains Id of crea
 
 ### RETRIEVE ###
 
-GET : Response 200 OK or 404 Not Found
+GET : Response 200 OK or 404 Not Found. Response in json format 
 
 /users?offset=20
 
+/user/{id} : Response 
+
 /venues?offset=20
 
-/venue/<id>/thalis?offset=20
+/venue/{id}/thalis?offset=20 - NOT IMPLEMENTED YET
 
 OR
 
-/thalis?offset=20&venue=<id>
+/thalis?offset=20&venue={id} - PREFERRED
+
+/thalis?offset=20
+
+
 
 ### UPDATE ###
 
@@ -137,7 +143,7 @@ PUT : Response 200 OK if update successful or 4XX Error
 
 DELETE : Response 204 No Content if successful
 
-/user/{id}
+/user/{id} : Request body with email corresponding to Id {"email": "xyz@abc.com"} 
 
 /venue/{id}
 

@@ -1,0 +1,29 @@
+
+        {{with .Prev}}
+                <a href="?offset={{.}}">Previous</a>
+        {{end}}
+
+        <div id="content" style="font-size:10px; height:1000px">
+                <div>
+                        <table class="table"><th>Id</th><th>ThaliId</th><th>Venue</th><th>SubmitTime</th><th>UserId</th><th>Verified</th><th>Accepted</th><th>Action</th>
+                                <tbody>
+                                {{range .List}}
+                                        <tr>
+                                                <td>  {{.Id}} </td>
+                                                <td>  {{.TThali.Id}} </td>
+                                                <td>  {{.TVenue.Name}} </td>
+                                                <td> {{.SubmitTime}} </td>
+                                                <td> {{.UserId}} </td>
+                                                <td> {{.Verified}} </td>
+                                                <td> {{.Accepted}} </td>
+                                                <td> <a href="/admin/edit/{{.Id}}"> Edit </a> </td>
+                                        </tr>
+                                {{end}}
+                                </tbody>
+                        </table>
+                </div>
+        </div>
+
+        {{with .Next}}
+                <a href="?offset={{.}}">Next</a>
+        {{end}}

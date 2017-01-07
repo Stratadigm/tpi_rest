@@ -14,23 +14,26 @@ import (
 	_ "time"
 )
 
-func TestCRUDUser(t *testing.T) {
+var (
+	id  = int64(0)
+	g1  = &tpi_data.User{Name: "Roger", Email: "jan@uary.com", Password: "allurbase", Confirmed: false, Rep: 0}
+	g2  = &tpi_data.User{Name: "Bob", Email: "jan@uary.com", Password: "allurbase", Confirmed: false, Rep: 0}
+	uri = "http://192.168.0.9:8080" //"https://2.thalipriceindex.appspot.com"
+)
+
+func TestCreateUser(t *testing.T) {
 
 	var err error
-	g1 := &tpi_data.User{Name: "Roger", Email: "dec@ember.com", Password: "allurbase", Confirmed: false, Rep: 0}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	err = enc.Encode(g1)
 	if err != nil {
 		t.Errorf("Encode json : %v", err)
 	}
-	//Create
-	//req, err := http.NewRequest("POST", "https://thalipriceindex.appspot.com/create/user", &buf)
-	req, err := http.NewRequest("POST", "https://thalipriceindex.appspot.com/create/user", &buf)
+	req, err := http.NewRequest("POST", uri+"/user", &buf)
 	if err != nil {
 		t.Errorf("Request : %v", err)
 	}
-	//req.Header.Set("X-Custom-Header", "")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -41,6 +44,104 @@ func TestCRUDUser(t *testing.T) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("Response: %v", resp.Status)
+	}
+	g2 := &tpi_data.User{}
+	jd := json.NewDecoder(resp.Body)
+	err = jd.Decode(g2)
+	if err != nil || g1.Name != g2.Name {
+		t.Errorf("Response: %v", g2)
+	}
+	id = g2.Id
+
+}
+
+func TestRetrieveUser(t *testing.T) {
+
+	//Retrieve
+	var err error
+	req, err := http.NewRequest("GET", uri+"/user/"+string(id), nil)
+	if err != nil {
+		t.Errorf("Request : %v", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Errorf("Client do request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Response: %v", resp.Status)
+	}
+	u1 := &tpi_data.User{}
+	jd := json.NewDecoder(resp.Body)
+	err = jd.Decode(u1)
+	if err != nil || u1.Name != g1.Name {
+		t.Errorf("Response: %v", u1)
+	}
+
+}
+
+func TestUpdateUser(t *testing.T) {
+
+	var err error
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	err = enc.Encode(g2)
+	if err != nil {
+		t.Errorf("Encode json : %v", err)
+	}
+	req, err := http.NewRequest("PUT", uri+"/user"+"/10000002", &buf)
+	if err != nil {
+		t.Errorf("Request : %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Errorf("Client do request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("Response: %v", resp.Status)
+	}
+	g2 := &tpi_data.User{}
+	jd := json.NewDecoder(resp.Body)
+	err = jd.Decode(g2)
+	if err != nil || g1.Name == g2.Name {
+		t.Errorf("Response: %v", g2)
+	}
+
+}
+
+func TestDeleteUser(t *testing.T) {
+
+	var err error
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	err = enc.Encode(g1)
+	if err != nil {
+		t.Errorf("Encode json : %v", err)
+	}
+	req, err := http.NewRequest("DELETE", uri+"/user"+"/10000002", &buf)
+	if err != nil {
+		t.Errorf("Request : %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Errorf("Client do request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
 		t.Errorf("Response: %v", resp.Status)
 	}
 
@@ -87,14 +188,6 @@ func TestCRUDVenue(t *testing.T) {
 
 }
 
-func TestCRUDThali(t *testing.T) {
-
-}
-
-func TestCRUDData(t *testing.T) {
-
-}
-
 func TestLogin(t *testing.T) {
 
 	var err error
@@ -123,14 +216,6 @@ func TestLogin(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Response: %v", resp.Status)
 	}
-	cl := resp.Header.Get("Content-Length")
-	icl, err := strconv.Atoi(cl)
-	if err != nil {
-		t.Errorf("Content Length err: %v", err)
-	}
-	//tok := make([]byte, icl)
-	//dec := bufio.NewReader(resp.Body)
-	//_, err = dec.Read(tok)
 	tok := &tpi_data.AuthToken{}
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(tok)
@@ -161,18 +246,11 @@ func TestLogin(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Response: %v", resp.Status)
 	}
-	cl = resp.Header.Get("Content-Length")
-	icl, err = strconv.Atoi(cl)
-	if err != nil {
-		t.Errorf("Content Length err: %v", err)
-	}
-	hw := make([]byte, icl)
+	hw := make([]byte, int(resp.ContentLength))
 	bdec := bufio.NewReader(resp.Body)
 	_, err = bdec.Read(hw)
 	if err != nil {
 		t.Errorf("Read resp err: %v", err)
-	} else {
-		t.Errorf("Read success: %v\n", string(hw))
 	}
 
 }

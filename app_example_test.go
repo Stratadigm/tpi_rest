@@ -15,7 +15,7 @@ import (
 	"net/http"
 	_ "net/http/httptest"
 	"os"
-	"strconv"
+	_ "strconv"
 	//"testing"
 	"time"
 )
@@ -56,7 +56,7 @@ func ExampleLoginToken() {
 	}
 	//Login
 	//req, err := http.NewRequest("POST", "http://192.168.0.9:8080/token_auth", &buf)
-	req, err := http.NewRequest("POST", "https://thalipriceindex.appspot.com/token_auth", &buf)
+	req, err := http.NewRequest("POST", uri+"/auth_token", &buf)
 	if err != nil {
 		fmt.Printf("Request : %v \n", err)
 	}
@@ -72,14 +72,6 @@ func ExampleLoginToken() {
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("Response: %v", resp.Status)
 	}
-	cl := resp.Header.Get("Content-Length")
-	icl, err := strconv.Atoi(cl)
-	if err != nil {
-		fmt.Printf("Content Length err: %v", err)
-	}
-	//tok := make([]byte, icl)
-	//dec := bufio.NewReader(resp.Body)
-	//_, err = dec.Read(tok)
 	tok := &tpi_data.AuthToken{}
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(tok)
@@ -125,12 +117,7 @@ func ExampleLoginToken() {
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("Response: %v", resp.Status)
 	}
-	cl = resp.Header.Get("Content-Length")
-	icl, err = strconv.Atoi(cl)
-	if err != nil {
-		fmt.Printf("Content Length err: %v", err)
-	}
-	hw := make([]byte, icl)
+	hw := make([]byte, int(resp.ContentLength))
 	bdec := bufio.NewReader(resp.Body)
 	_, err = bdec.Read(hw)
 	fmt.Println(string(hw))
@@ -149,8 +136,7 @@ func ExampleLoginFail() {
 	fatal(err)
 
 	//Test token
-	//req, err = http.NewRequest("GET", "http://192.168.0.9:8080/hello", nil)
-	req, err := http.NewRequest("GET", "https://thalipriceindex.appspot.com/hello", nil)
+	req, err := http.NewRequest("GET", uri+"/hello", nil)
 	if err != nil {
 		fmt.Printf("Request : %v", err)
 	}

@@ -1,0 +1,29 @@
+
+        {{with .Prev}}
+                <a href="?offset={{.}}">Previous</a>
+        {{end}}
+
+        <div id="content" style="font-size:10px; height:1000px">
+                <div>
+                        <table class="table"><th>Id</th><th>Target</th><th>Limited</th><th>Region</th><th>Price</th><th>Venue</th><th>Photo</th><th>Action</th>
+                                <tbody>
+                                {{range .List}}
+                                        <tr>
+                                                <td>  {{.Id}} </td>
+                                                <td>  {{.Target}} </td>
+                                                <td> {{.Limited}} </td>
+                                                <td> {{.Region}} </td>
+                                                <td> {{.Price}} </td>
+                                                <td> {{.VenueId}} </td>
+                                                <td> <a href="/image/{{.Photo}}"> {{.Photo}} </a> </td>
+                                                <td> <a href="/upload/{{.Id}}"> Upload </a> </td>
+                                        </tr>
+                                {{end}}
+                                </tbody>
+                        </table>
+                </div>
+        </div>
+
+        {{with .Next}}
+                <a href="?offset={{.}}">Next</a>
+        {{end}}

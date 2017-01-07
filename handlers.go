@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	_ "fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
 	//_ "golang.org/x/oauth2"
@@ -51,8 +50,8 @@ type Render struct { //for most purposes
 	Average float64 `json:"average"`
 }
 
-//Login handles POST requests to login. POST requests must consist of User email and password and reply consists of token (200 OK) if email/password combination is correct and 401 Unauthorized if incorrect.
-func Login(w http.ResponseWriter, r *http.Request) {
+//Login handles POST/PUT requests to login. POST requests must consist of User email and password and reply consists of token (200 OK) if email/password combination is correct and 401 Unauthorized if incorrect.
+func Login(w http.ResponseWriter, r *http.Request /*, next http.HandlerFunc*/) {
 
 	c := appengine.NewContext(r)
 
@@ -69,7 +68,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseStatus, token := tpi_services.Login(c, requestUser)
-	//w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(responseStatus)
 	//enc := json.Encoder(w)
 	//if err := enc.Encode(token); err != nil {
@@ -161,7 +160,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	switch r.URL.Path {
-	case "/create/user":
+	case "/user":
 		g1 = &tpi_data.User{}
 		if err = adsc.Create(g1); err != nil {
 			log.Errorf(c, "Create user: %v", err)
@@ -172,7 +171,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-	case "/create/venue":
+	case "/venue":
 		g1 = &tpi_data.Venue{}
 		if err = adsc.Create(g1); err != nil {
 			log.Errorf(c, "Create venue: %v", err)
@@ -183,7 +182,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-	case "/create/thali":
+	case "/thali":
 		g1 = &tpi_data.Thali{}
 		if err = adsc.Create(g1); err != nil {
 			log.Errorf(c, "Create thali: %v", err)
@@ -194,7 +193,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-	case "/create/data":
+	case "/data":
 		g1 = &tpi_data.Data{}
 		if err = adsc.Create(g1); err != nil {
 			log.Errorf(c, "Create data: %v", err)
@@ -239,7 +238,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	//Need to specify Id when adding to datastore because json.Decode posted user data wipes out Id information
 	reflect.ValueOf(g1).Elem().FieldByName("Id").SetInt(temp)
 	reflect.ValueOf(g1).Elem().FieldByName("Submitted").Set(reflect.ValueOf(time.Now()))
-	if id, err := adsc.Add(g1, temp); err != nil {
+	if _, err := adsc.Add(g1, temp); err != nil {
 		log.Errorf(c, "Couldn't add entity: %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Create entity " + err.Error()}); err != nil {
@@ -249,7 +248,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.WriteHeader(http.StatusCreated)
-		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Created entity " + string(id)}); err != nil {
+		if err := enc.Encode(g1); err != nil {
 			log.Errorf(c, "Created json encode tpi_data.DSErr: %v", err)
 			return
 		}
@@ -350,13 +349,334 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	}
 }*/
 
-//Retrieve gets list of entities of posted type from datastore
+//Retrieve writes JSON formatted list of Users/Venues/Thalis/Data to the response writer
 func Retrieve(w http.ResponseWriter, r *http.Request) {
 
-	//var err error
 	c := appengine.NewContext(r)
-	log.Errorf(c, "Retrieve")
-	return
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	adsc := tpi_data.NewDSwc(c) //&DS{Ctx: c}
+	var err error
+
+	routename := ""
+	route := mux.CurrentRoute(r)
+	if route == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Current Route Nil "}); err1 != nil {
+			log.Errorf(c, "Json encode current route err: %v", err1)
+		}
+		return
+
+	} else {
+		routename = route.GetName()
+	}
+
+	offint := 0
+	if offset := r.FormValue("offset"); offset != "" {
+		offint, err = strconv.Atoi(offset)
+		if err != nil {
+			log.Errorf(c, "Reading records offset: %v", err)
+		}
+	}
+
+	switch routename {
+	case "RetrieveUsers":
+		g1 := make([]tpi_data.User, 1)
+		if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "retrieve users : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "json list users json encode : %v", err1)
+			}
+			return
+		}
+		if len(g1) == 0 || (len(g1) == 1 && g1[0].Id == int64(0)) {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "No users : "}); err1 != nil {
+				log.Errorf(c, "retrieve users json encode : %v", err1)
+			}
+			return
+		} else {
+			if g1[0].Id == int64(0) {
+				g1 = g1[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			if err := enc.Encode(g1); err != nil {
+				log.Errorf(c, "retrieve users response json encode : %v", err)
+			}
+			return
+		}
+	case "RetrieveVenues":
+		g1 := make([]tpi_data.Venue, 1)
+		if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "retrieve venues : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve venues json encode : %v", err1)
+			}
+			return
+		}
+		if len(g1) == 0 || (len(g1) == 1 && g1[0].Id == int64(0)) {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "No venues : "}); err1 != nil {
+				log.Errorf(c, "retrieve venues json encode : %v", err1)
+			}
+			return
+		} else {
+			if g1[0].Id == int64(0) {
+				g1 = g1[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			if err := enc.Encode(g1); err != nil {
+				log.Errorf(c, "retrieve venues response json encode : %v", err)
+			}
+			return
+		}
+	case "RetrieveThalis":
+		venueid := int64(0)
+		if venueId := r.FormValue("venue"); venueId != "" {
+			venueid, err = strconv.ParseInt(venueId, 10, 64)
+			if err != nil {
+				log.Errorf(c, "retrieve thali venue id: %v", err)
+			}
+		}
+		g1 := make([]tpi_data.Thali, 1)
+		if err = adsc.FilteredList(&g1, "VenueId =", venueid, offint); err != nil {
+			//if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "retrieve thalis : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve thalis json encode : %v", err1)
+			}
+			return
+		}
+		if len(g1) == 0 || (len(g1) == 1 && g1[0].Id == int64(0)) {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "No thalis : "}); err1 != nil {
+				log.Errorf(c, "retrieve thalis json encode : %v", err1)
+			}
+			return
+		} else {
+			if g1[0].Id == int64(0) {
+				g1 = g1[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			if err := enc.Encode(g1); err != nil {
+				log.Errorf(c, "retrieve thalis response json encode : %v", err)
+			}
+			return
+		}
+	case "RetrieveUser":
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			log.Errorf(c, "retrieve user strconv: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve user strconv vars json encode: %v", err1)
+			}
+			return
+		}
+		g1 := make([]tpi_data.User, 1)
+		if err = adsc.FilteredList(&g1, "Id =", id, 0); err != nil {
+			log.Errorf(c, "retrieve user : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve user json encode : %v", err1)
+			}
+			return
+		}
+		if len(g1) == 0 || (len(g1) == 1 && g1[0].Id == int64(0)) {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "User doesn't exist : " + strconv.Itoa(id)}); err1 != nil {
+				log.Errorf(c, "retrieve user json encode : %v", err1)
+			}
+			return
+		} else {
+			if g1[0].Id == int64(0) {
+				g1 = g1[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			if err := enc.Encode(g1); err != nil {
+				log.Errorf(c, "retrieve user response json encode : %v", err)
+			}
+			return
+		}
+	case "RetrieveVenue":
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			log.Errorf(c, "retrieve venue strconv vars : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve venue strconv vars json encode: %v", err1)
+			}
+			return
+		}
+		g1 := make([]tpi_data.Venue, 1)
+		if err = adsc.FilteredList(&g1, "Id =", id, 0); err != nil {
+			log.Errorf(c, "retrieve venue : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve venue json encode : %v", err1)
+			}
+			return
+		}
+		if len(g1) == 0 || (len(g1) == 1 && g1[0].Id == int64(0)) {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Venue doesn't exist : " + strconv.Itoa(id)}); err1 != nil {
+				log.Errorf(c, "retrieve venue json encode : %v", err1)
+			}
+			return
+		} else {
+			if g1[0].Id == int64(0) {
+				g1 = g1[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			if err := enc.Encode(g1); err != nil {
+				log.Errorf(c, "retrieve venue response json encode : %v", err)
+			}
+			return
+		}
+	case "RetrieveThali":
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			log.Errorf(c, "retrieve thali strconv vars : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve thali strconv vars json encode: %v", err1)
+			}
+			return
+		}
+		g1 := make([]tpi_data.Thali, 1)
+		if err = adsc.FilteredList(&g1, "Id =", id, 0); err != nil {
+			//if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "retrieve thali : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve thali json encode : %v", err1)
+			}
+			return
+		}
+		if len(g1) == 0 || (len(g1) == 1 && g1[0].Id == int64(0)) {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Thali doesn't exist : " + strconv.Itoa(id)}); err1 != nil {
+				log.Errorf(c, "retrieve thali json encode : %v", err1)
+			}
+			return
+		} else {
+			if g1[0].Id == int64(0) {
+				g1 = g1[1:]
+			}
+			w.WriteHeader(http.StatusOK)
+			if err := enc.Encode(g1); err != nil {
+				log.Errorf(c, "retrieve thali response json encode : %v", err)
+			}
+			return
+		}
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Bad route : " + routename}); err1 != nil {
+			log.Errorf(c, "retrieve bad route : %v", err1)
+		}
+		return
+	}
+
+}
+
+//JSONFilteredList writes list of Users/Venues/Thalis/Data in html to the response writer
+func JSONFilteredList(w http.ResponseWriter, r *http.Request) {
+
+	c := appengine.NewContext(r)
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	adsc := tpi_data.NewDSwc(c) //&DS{Ctx: c}
+	var err error
+
+	offint := 0
+	if offset := r.FormValue("offset"); offset != "" {
+		offint, err = strconv.Atoi(offset)
+		if err != nil {
+			log.Errorf(c, "Reading records offset: %v", err)
+		}
+	}
+
+	switch r.URL.Path {
+	case "/jsonlist/users":
+		g1 := make([]tpi_data.User, 1)
+		if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "json list users: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "json list users json encode err: %v", err1)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		if err := enc.Encode(g1); err != nil {
+			log.Errorf(c, "json list users encode: %v", err)
+		}
+		return
+	case "/jsonlist/venues":
+		g1 := make([]tpi_data.Venue, 1)
+		if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "json list venues: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "json list venues json encode err: %v", err1)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		if err := enc.Encode(&g1); err != nil {
+			log.Errorf(c, "json list venues encode: %v", err)
+		}
+		return
+	case "/jsonlist/thalis":
+		venueid := int64(0)
+		if venueId := r.FormValue("venue"); venueId != "" {
+			venueid, err = strconv.ParseInt(venueId, 10, 64)
+			if err != nil {
+				log.Errorf(c, "Reading venue id: %v", err)
+			}
+		}
+		g1 := make([]tpi_data.Thali, 1)
+		if err = adsc.FilteredList(&g1, "VenueId =", venueid, offint); err != nil {
+			log.Errorf(c, "json list thalis: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "json list thalis json encode err: %v", err1)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		if err := enc.Encode(&g1); err != nil {
+			log.Errorf(c, "json list thalis encode: %v", err)
+		}
+		return
+	case "/jsonlist/datas":
+		g1 := make([]tpi_data.Data, 1)
+		if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "json list data: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "json list datas json encode err: %v", err1)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		if err := enc.Encode(&g1); err != nil {
+			log.Errorf(c, "json list datas encode: %v", err)
+		}
+		return
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+			log.Errorf(c, "json list bad path err: %v", err1)
+		}
+		return
+	}
 
 }
 
@@ -364,8 +684,130 @@ func Retrieve(w http.ResponseWriter, r *http.Request) {
 func Update(w http.ResponseWriter, r *http.Request) {
 
 	c := appengine.NewContext(r)
-	log.Errorf(c, "Update")
-	return
+	var g1, g2 interface{}
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	adsc := tpi_data.NewDSwc(c) //&DS{Ctx: c}
+	var err error
+
+	routename := ""
+	route := mux.CurrentRoute(r)
+	if route == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Current Route Nil "}); err1 != nil {
+			log.Errorf(c, "Json encode current route err: %v", err1)
+		}
+		return
+
+	} else {
+		routename = route.GetName()
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		log.Errorf(c, "update entity strconv: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+			log.Errorf(c, "update entity strconv vars json encode: %v", err1)
+		}
+		return
+	}
+
+	switch routename {
+	case "UpdateUser":
+		g1 = &tpi_data.User{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			log.Errorf(c, "retrieve user : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "update user json encode : %v", err1)
+			}
+			return
+		}
+		g2 = &tpi_data.User{}
+	case "UpdateVenue":
+		//g1 := make([]tpi_data.Venue, 1)
+		//if err = adsc.FilteredList(&g1, "Id =", id, 0); err != nil {
+		g1 = &tpi_data.Venue{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			log.Errorf(c, "update venue : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "update venue json encode : %v", err1)
+			}
+			return
+		}
+		g2 = &tpi_data.Venue{}
+		/*if len(g1) == 0 {
+			log.Errorf(c, "update no such entity : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "No such entity : " + strconv.Itoa(id)}); err1 != nil {
+				log.Errorf(c, "update no such entity err encode : %v", err1)
+			}
+			return
+		}
+		h1 = g1[0]*/
+	case "UpdateThali":
+		g1 = &tpi_data.Thali{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			//if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "update thali : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "update thali json encode : %v", err1)
+			}
+			return
+		}
+		g2 = &tpi_data.Thali{}
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Bad route : " + routename}); err1 != nil {
+			log.Errorf(c, "retrieve bad route : %v", err1)
+		}
+		return
+	}
+
+	temp := reflect.ValueOf(g1).Elem().FieldByName("Id").Int()
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	err = decoder.Decode(g2)
+	if err != nil {
+		log.Errorf(c, "update entity decode json post : %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "update entity decode " + err.Error()}); err != nil {
+			log.Errorf(c, "update entity json encode tpi_data.DSErr: %v", err)
+			return
+		}
+		return
+	}
+	if err := tpi_data.Validate(g2, g1); err != nil {
+		log.Errorf(c, "update entity json validate : %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "update entity validation " + err.Error()}); err != nil {
+			log.Errorf(c, "update entity json encode tpi_data.DSErr: %v", err)
+			return
+		}
+		return
+	}
+	//Need to specify Id when adding to datastore because json.Decode posted user data wipes out Id information
+	reflect.ValueOf(g2).Elem().FieldByName("Id").SetInt(temp)
+	if err := adsc.Update(g2); err != nil {
+		log.Errorf(c, "update entity : %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Update entity " + err.Error()}); err != nil {
+			log.Errorf(c, "update entity encode tpi_data.DSErr: %v", err)
+			return
+		}
+		return
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+		if err := enc.Encode(g1); err != nil {
+			log.Errorf(c, "update entity encode tpi_data.DSErr: %v", err)
+			return
+		}
+		return
+	}
 
 }
 
@@ -373,8 +815,132 @@ func Update(w http.ResponseWriter, r *http.Request) {
 func Delete(w http.ResponseWriter, r *http.Request) {
 
 	c := appengine.NewContext(r)
-	log.Errorf(c, "Delete")
-	return
+	var g1, h1 interface{}
+	w.Header().Set("Content-Type", "application/json")
+	enc := json.NewEncoder(w)
+	adsc := tpi_data.NewDSwc(c) //&DS{Ctx: c}
+	var err error
+
+	routename := ""
+	route := mux.CurrentRoute(r)
+	if route == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Current Route Nil "}); err1 != nil {
+			log.Errorf(c, "delete current route nil encode dserr : %v", err1)
+		}
+		return
+
+	} else {
+		routename = route.GetName()
+	}
+
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		log.Errorf(c, "delete entity strconv: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+			log.Errorf(c, "delete entity strconv vars encode dserr : %v", err1)
+		}
+		return
+	}
+
+	switch routename {
+	case "DeleteUser":
+		g1 = &tpi_data.User{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			log.Errorf(c, "delete user : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "delete user encode dserr : %v", err1)
+			}
+			return
+		}
+		h1 = &tpi_data.User{}
+	case "DeleteVenue":
+		//g1 := make([]tpi_data.Venue, 1)
+		//if err = adsc.FilteredList(&g1, "Id =", id, 0); err != nil {
+		g1 = &tpi_data.Venue{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			log.Errorf(c, "delete venue : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "delete venue encode dserr : %v", err1)
+			}
+			return
+		}
+		/*if len(g1) == 0 {
+			log.Errorf(c, "delete no such entity : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "No such entity : " + strconv.Itoa(id)}); err1 != nil {
+				log.Errorf(c, "delete no such entity encode dserr : %v", err1)
+			}
+			return
+		}
+		h1 = g1[0]
+		h2 = &tpi_data.Venue{}
+		*/
+		h1 = &tpi_data.Venue{}
+	case "DeleteThali":
+		g1 = &tpi_data.Thali{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			//if err = adsc.List(&g1, offint); err != nil {
+			log.Errorf(c, "delete thali : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "delete thali encode dserr : %v", err1)
+			}
+			return
+		}
+		h1 = &tpi_data.Thali{}
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Bad route : " + routename}); err1 != nil {
+			log.Errorf(c, "delete bad route : %v", err1)
+		}
+		return
+	}
+
+	temp := reflect.ValueOf(g1).Elem().FieldByName("Id").Int()
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	err = decoder.Decode(h1)
+	if err != nil {
+		log.Errorf(c, "delete entity decode json post : %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Delete entity decode " + err.Error()}); err != nil {
+			log.Errorf(c, "delete entity json encode dserr: %v", err)
+			return
+		}
+		return
+	}
+
+	if reflect.ValueOf(g1).Elem().FieldByName("Email").String() != reflect.ValueOf(h1).Elem().FieldByName("Email").String() {
+		log.Errorf(c, "delete entity mismatch : %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "delete entity mismatch " + err.Error()}); err != nil {
+			log.Errorf(c, "delete entity mismatch dserr : %v", err)
+			return
+		}
+		return
+	}
+	log.Errorf(c, "Deleting: %v", h1)
+	if err := adsc.Delete(temp); err != nil {
+		log.Errorf(c, "delete entity : %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Delete entity " + err.Error()}); err != nil {
+			log.Errorf(c, "delete entity encode tpi_data.DSErr: %v", err)
+			return
+		}
+		return
+	} else {
+		w.WriteHeader(http.StatusAccepted)
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err != nil {
+			log.Errorf(c, "delete entity encode dserr : %v", err)
+			return
+		}
+		return
+	}
 
 }
 
@@ -509,197 +1075,6 @@ func List(w http.ResponseWriter, r *http.Request) {
 			log.Errorf(c, "Rendering template: %v", err)
 		}
 	}
-}
-
-//JSONList writes list of Users/Venues/Thalis/Data in html to the response writer
-func JSONList(w http.ResponseWriter, r *http.Request) {
-
-	c := appengine.NewContext(r)
-	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	adsc := tpi_data.NewDSwc(c) //&DS{Ctx: c}
-	var err error
-
-	offint := 0
-	if offset := r.FormValue("offset"); offset != "" {
-		offint, err = strconv.Atoi(offset)
-		if err != nil {
-			log.Errorf(c, "Reading records offset: %v", err)
-		}
-	}
-
-	switch r.URL.Path {
-	case "/jsonlist/users":
-		g1 := make([]tpi_data.User, 1)
-		if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list users: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list users json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(g1); err != nil {
-			log.Errorf(c, "json list users encode: %v", err)
-		}
-		return
-	case "/jsonlist/venues":
-		g1 := make([]tpi_data.Venue, 1)
-		if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list venues: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list venues json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(&g1); err != nil {
-			log.Errorf(c, "json list venues encode: %v", err)
-		}
-		return
-	case "/jsonlist/thalis":
-		venueid := int64(0)
-		if venueId := r.FormValue("venue"); venueId != "" {
-			venueid, err = strconv.ParseInt(venueId, 10, 64)
-			if err != nil {
-				log.Errorf(c, "Reading venue id: %v", err)
-			}
-		}
-		g1 := make([]tpi_data.Thali, 1)
-		if err = adsc.FilteredList(&g1, "VenueId =", venueid, offint); err != nil {
-			//if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list thalis: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list thalis json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(&g1); err != nil {
-			log.Errorf(c, "json list thalis encode: %v", err)
-		}
-		return
-	case "/jsonlist/datas":
-		g1 := make([]tpi_data.Data, 1)
-		if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list data: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list datas json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(&g1); err != nil {
-			log.Errorf(c, "json list datas encode: %v", err)
-		}
-		return
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-			log.Errorf(c, "json list bad path err: %v", err1)
-		}
-		return
-	}
-
-}
-
-//JSONFilteredList writes list of Users/Venues/Thalis/Data in html to the response writer
-func JSONFilteredList(w http.ResponseWriter, r *http.Request) {
-
-	c := appengine.NewContext(r)
-	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	adsc := tpi_data.NewDSwc(c) //&DS{Ctx: c}
-	var err error
-
-	offint := 0
-	if offset := r.FormValue("offset"); offset != "" {
-		offint, err = strconv.Atoi(offset)
-		if err != nil {
-			log.Errorf(c, "Reading records offset: %v", err)
-		}
-	}
-
-	switch r.URL.Path {
-	case "/jsonlist/users":
-		g1 := make([]tpi_data.User, 1)
-		if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list users: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list users json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(g1); err != nil {
-			log.Errorf(c, "json list users encode: %v", err)
-		}
-		return
-	case "/jsonlist/venues":
-		g1 := make([]tpi_data.Venue, 1)
-		if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list venues: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list venues json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(&g1); err != nil {
-			log.Errorf(c, "json list venues encode: %v", err)
-		}
-		return
-	case "/jsonlist/thalis":
-		venueid := int64(0)
-		if venueId := r.FormValue("venue"); venueId != "" {
-			venueid, err = strconv.ParseInt(venueId, 10, 64)
-			if err != nil {
-				log.Errorf(c, "Reading venue id: %v", err)
-			}
-		}
-		g1 := make([]tpi_data.Thali, 1)
-		if err = adsc.FilteredList(&g1, "VenueId =", venueid, offint); err != nil {
-			log.Errorf(c, "json list thalis: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list thalis json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(&g1); err != nil {
-			log.Errorf(c, "json list thalis encode: %v", err)
-		}
-		return
-	case "/jsonlist/datas":
-		g1 := make([]tpi_data.Data, 1)
-		if err = adsc.List(&g1, offint); err != nil {
-			log.Errorf(c, "json list data: %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-				log.Errorf(c, "json list datas json encode err: %v", err1)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		if err := enc.Encode(&g1); err != nil {
-			log.Errorf(c, "json list datas encode: %v", err)
-		}
-		return
-	default:
-		w.WriteHeader(http.StatusBadRequest)
-		if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
-			log.Errorf(c, "json list bad path err: %v", err1)
-		}
-		return
-	}
-
 }
 
 //Users writes list of Users in html to the response writer
