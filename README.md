@@ -131,7 +131,7 @@ OR
 
 ### UPDATE ###
 
-PUT : Response 200 OK if update successful or 4XX Error
+PUT : Response 202 Accepted if update successful or 4XX Error
 
 /user/{id} : Request body contains JSON formatted User : Response body contains Id of updated User
 
@@ -143,7 +143,7 @@ PUT : Response 200 OK if update successful or 4XX Error
 
 DELETE : Response 204 No Content if successful
 
-/user/{id} : Request body with email corresponding to Id {"email": "xyz@abc.com"} 
+/user/{id} : Request body with email corresponding to Id {"email": "xyz@abc.com"} - GAE refuses request body in DELETE requests 
 
 /venue/{id}
 
