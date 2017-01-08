@@ -9,6 +9,7 @@ import (
 	"google.golang.org/appengine"
 	"net/http"
 	_ "net/http/httptest"
+	"net/url"
 	"strconv"
 	"testing"
 	_ "time"
@@ -122,17 +123,13 @@ func TestUpdateUser(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 
 	var err error
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	err = enc.Encode(g1)
-	if err != nil {
-		t.Errorf("Encode json : %v", err)
-	}
-	req, err := http.NewRequest("DELETE", uri+"/user"+"/10000002", &buf)
+	v := url.Values{}
+	v.Set("email", g2.Email)
+	v.Set("fullname", g2.Name)
+	req, err := http.NewRequest("DELETE", uri+"/user"+"/10000002?"+v.Encode(), nil)
 	if err != nil {
 		t.Errorf("Request : %v", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

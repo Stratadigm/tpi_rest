@@ -143,11 +143,11 @@ PUT : Response 202 Accepted if update successful or 4XX Error
 
 DELETE : Response 204 No Content if successful
 
-/user/{id} : Request body with email corresponding to Id {"email": "xyz@abc.com"} - GAE refuses request body in DELETE requests 
+/user/{id}?email={email}&fullname={name} : GAE ignores request body in DELETE requests so need to use URL parameters
 
-/venue/{id}
+/venue/{id}?name={name}
 
-/thali/{id}
+/thali/{id}?name={name}
 
 
 ## URLs ##
@@ -181,6 +181,11 @@ Mobile app needs to be very simple. Dagger v2 for DI is optional.
 Must have basic modules (networking, storage etc.) and Activities/Fragments to allow User to login/register/logou. Simple unobtrusive drop down menu in top right/left corner with option to logout at any time. 
 
 Must have List/Recyclerview of Venues & Thalis. Each entry in list of Venues to be selectable to activate new Thali entry Activity for selected Venue. Each entry in list of Thalis to be selectable to either show an image or signal Intent to Camera to take a photo and upload.
+
+In v2 use of ConnectivityManager along with the local data persistence model may be included. This will allow creation of local data even in absence of data and later sync with server in presence of network.  
+
+Use JobScheduler 
+
 
 Preferable to avoid any and all javascript in browser version. Need to consider data contributors with older phones/computers so app needs to be very basic. Should have some basic user validationinterface for Google/Facebook oAuth2, some basic data input functionality and ability to post that data to a server. Ability to get data and display tpi at user's location is secondary. 
 

@@ -372,7 +372,9 @@ func Retrieve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	offint := 0
+	//offint := ""
 	if offset := r.FormValue("offset"); offset != "" {
+		//offint, _ = base64.URLEncoding.DecodeString(offset)
 		offint, err = strconv.Atoi(offset)
 		if err != nil {
 			log.Errorf(c, "Reading records offset: %v", err)
@@ -782,7 +784,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := tpi_data.Validate(g2, g1); err != nil {
-		log.Errorf(c, "update entity json validate : %v\n", err)
+		log.Errorf(c, "update entity validate : %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "update entity validation " + err.Error()}); err != nil {
 			log.Errorf(c, "update entity json encode tpi_data.DSErr: %v", err)
@@ -815,6 +817,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 func Delete(w http.ResponseWriter, r *http.Request) {
 
 	c := appengine.NewContext(r)
+	_ = r.ParseForm()
 	var g1, h1 interface{}
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
@@ -850,8 +853,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		g1 = &tpi_data.User{Id: int64(id)}
 		if err = adsc.Get(g1); err != nil {
 			log.Errorf(c, "delete user : %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+			w.WriteHeader(http.StatusAccepted)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err1 != nil {
 				log.Errorf(c, "delete user encode dserr : %v", err1)
 			}
 			return
@@ -863,8 +866,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		g1 = &tpi_data.Venue{Id: int64(id)}
 		if err = adsc.Get(g1); err != nil {
 			log.Errorf(c, "delete venue : %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+			w.WriteHeader(http.StatusAccepted)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err1 != nil {
 				log.Errorf(c, "delete venue encode dserr : %v", err1)
 			}
 			return
@@ -884,10 +887,9 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	case "DeleteThali":
 		g1 = &tpi_data.Thali{Id: int64(id)}
 		if err = adsc.Get(g1); err != nil {
-			//if err = adsc.List(&g1, offint); err != nil {
 			log.Errorf(c, "delete thali : %v", err)
-			w.WriteHeader(http.StatusBadRequest)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+			w.WriteHeader(http.StatusAccepted)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err1 != nil {
 				log.Errorf(c, "delete thali encode dserr : %v", err1)
 			}
 			return
@@ -902,23 +904,26 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	temp := reflect.ValueOf(g1).Elem().FieldByName("Id").Int()
-	decoder := json.NewDecoder(r.Body)
+	decoder := schema.NewDecoder()
+	err = decoder.Decode(h1, r.Form)
+	log.Errorf(c, reflect.ValueOf(h1).Elem().FieldByName("Name").String())
 	defer r.Body.Close()
-	err = decoder.Decode(h1)
 	if err != nil {
-		log.Errorf(c, "delete entity decode json post : %v\n", err)
+		log.Errorf(c, "delete entity decode schema : %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
 		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "Delete entity decode " + err.Error()}); err != nil {
-			log.Errorf(c, "delete entity json encode dserr: %v", err)
+			log.Errorf(c, "delete entity encode dserr: %v", err)
 			return
 		}
 		return
 	}
 
-	if reflect.ValueOf(g1).Elem().FieldByName("Email").String() != reflect.ValueOf(h1).Elem().FieldByName("Email").String() {
+	//Set the Id field of schema decoded entity to -999 to mark for deletion
+	reflect.ValueOf(h1).Elem().FieldByName("Id").SetInt(int64(-999))
+	if err = tpi_data.Validate(h1, g1); err != nil {
 		log.Errorf(c, "delete entity mismatch : %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
-		if err := enc.Encode(&tpi_data.DSErr{time.Now(), "delete entity mismatch " + err.Error()}); err != nil {
+		if err := enc.Encode(&tpi_data.DSErr{time.Now(), err.Error()}); err != nil {
 			log.Errorf(c, "delete entity mismatch dserr : %v", err)
 			return
 		}
