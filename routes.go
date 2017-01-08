@@ -4,6 +4,8 @@ import (
 	"net/http"
 )
 
+type AuthHandlerFunc func(http.ResponseWriter, *http.Request, http.HandlerFunc)
+
 type Route struct {
 	Name        string
 	Method      string
@@ -11,7 +13,15 @@ type Route struct {
 	HandlerFunc http.HandlerFunc
 }
 
+type ARoute struct {
+	Name    string
+	Method  string
+	Pattern string
+	Auth    AuthHandlerFunc
+}
+
 type Routes []Route
+type ARoutes []ARoute
 
 var routes = Routes{
 	//JSON API
@@ -21,18 +31,6 @@ var routes = Routes{
 		"/auth_token",
 		Login,
 	},
-	/*Route{
-		"Refresh",
-		"PUT",
-		"/auth_token",
-		Login,
-	},
-	Route{
-		"Logout",
-		"POST",
-		"/logout",
-		Logout,
-	},*/
 	Route{
 		"CreateUser",
 		"POST",
@@ -177,5 +175,26 @@ var routes = Routes{
 		"GET",
 		"/image/{what}",
 		GetImage,
+	},
+}
+
+var aroutes = ARoutes{
+	ARoute{
+		"Refresh",
+		"PUT",
+		"/auth_token",
+		Refresh,
+	},
+	ARoute{
+		"Logout",
+		"POST",
+		"/logout",
+		Logout,
+	},
+	ARoute{
+		"Hello",
+		"GET",
+		"/hello",
+		Hello,
 	},
 }

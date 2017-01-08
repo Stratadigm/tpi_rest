@@ -47,7 +47,6 @@ func init() {
 func ExampleLoginToken() {
 
 	var err error
-	g1 := &tpi_data.User{Name: "Roger", Email: "dec@ember.com", Password: "allurbase"}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	err = enc.Encode(g1)
@@ -55,12 +54,10 @@ func ExampleLoginToken() {
 		fmt.Printf("Encode json : %v\n", err)
 	}
 	//Login
-	//req, err := http.NewRequest("POST", "http://192.168.0.9:8080/token_auth", &buf)
 	req, err := http.NewRequest("POST", uri+"/auth_token", &buf)
 	if err != nil {
 		fmt.Printf("Request : %v \n", err)
 	}
-	//req.Header.Set("X-Custom-Header", "")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -98,8 +95,7 @@ func ExampleLoginToken() {
 	fmt.Println(claims.UserInfo.Email, claims.StandardClaims.ExpiresAt-time.Now().Unix())
 
 	//Test token
-	//req, err = http.NewRequest("GET", "http://192.168.0.9:8080/hello", nil)
-	req, err = http.NewRequest("GET", "https://thalipriceindex.appspot.com/hello", nil)
+	req, err = http.NewRequest("GET", uri+"/hello", nil)
 	if err != nil {
 		fmt.Printf("Request : %v", err)
 	}

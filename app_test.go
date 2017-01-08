@@ -191,7 +191,6 @@ func TestCRUDVenue(t *testing.T) {
 func TestLogin(t *testing.T) {
 
 	var err error
-	g1 := &tpi_data.User{Name: "Roger", Email: "dec@ember.com", Password: "allurbase"}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	err = enc.Encode(g1)
@@ -199,12 +198,10 @@ func TestLogin(t *testing.T) {
 		t.Errorf("Encode json : %v", err)
 	}
 	//Login
-	//req, err := http.NewRequest("POST", "http://192.168.0.9:8080/token_auth", &buf)
-	req, err := http.NewRequest("POST", "https://thalipriceindex.appspot.com/token_auth", &buf)
+	req, err := http.NewRequest("POST", "https://thalipriceindex.appspot.com/auth_token", &buf)
 	if err != nil {
 		t.Errorf("Request : %v", err)
 	}
-	//req.Header.Set("X-Custom-Header", "")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -258,20 +255,16 @@ func TestLogin(t *testing.T) {
 func TestRefresh(t *testing.T) {
 
 	var err error
-	g1 := &tpi_data.User{Name: "Rafa", Email: "rafa@fed.com", Password: "allurbase"}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	err = enc.Encode(g1)
 	if err != nil {
 		t.Errorf("Encode json : %v", err)
 	}
-	//Create
-	//req, err := http.NewRequest("POST", "https://thalipriceindex.appspot.com/create/user", &buf)
-	req, err := http.NewRequest("POST", "http://192.168.0.9:8080/refresh_token_auth", &buf)
+	req, err := http.NewRequest("PUT", uri+"/auth_token", &buf)
 	if err != nil {
 		t.Errorf("Request : %v", err)
 	}
-	//req.Header.Set("X-Custom-Header", "")
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}

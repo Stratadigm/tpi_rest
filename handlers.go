@@ -80,8 +80,8 @@ func Login(w http.ResponseWriter, r *http.Request /*, next http.HandlerFunc*/) {
 
 }
 
-//RefreshToken handles GET requests to refresh token
-func RefreshToken(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+//Refresh handles PUT requests to refresh token
+func Refresh(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
 	c := appengine.NewContext(r)
 	requestUser := new(tpi_data.User)

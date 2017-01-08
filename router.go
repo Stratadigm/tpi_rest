@@ -8,7 +8,10 @@ import (
 	"regexp"
 )
 
-var validPath = regexp.MustCompile(`^/(user|venue|thali|users|venues|thalis|list|counters|postform|getform|image|logs)?/?(.*)$`)
+var (
+	validPath = regexp.MustCompile(`^/(user|venue|thali|users|venues|thalis|list|counters|postform|getform|image|logs)?/?(.*)$`)
+	protected = map[string]string{"Refresh": "Refresh", "Logout": "ogout", "Hello": "Hello"}
+)
 
 func NewRouter() *mux.Router {
 
@@ -20,11 +23,18 @@ func NewRouter() *mux.Router {
 
 		router.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(handler)
 	}
+	for _, route := range aroutes {
+		if _, ok := protected[route.Name]; ok {
+			router.Methods(route.Method).Path(route.Pattern).Name(route.Name).Handler(
+				negroni.New(negroni.HandlerFunc(tpi_auth.RequireTokenAuthentication),
+					negroni.HandlerFunc(route.Auth)))
+		}
+	}
 	/*router.Handle("/auth_token",
 	negroni.New(
 		negroni.HandlerFunc(tpi_auth.RequireTokenAuthentication),
 		negroni.HandlerFunc(Login),
-	)).Methods("PUT")*/
+	)).Methods("PUT")
 	router.Handle("/logout",
 		negroni.New(
 			negroni.HandlerFunc(tpi_auth.RequireTokenAuthentication),
@@ -34,8 +44,9 @@ func NewRouter() *mux.Router {
 		negroni.New(
 			negroni.HandlerFunc(tpi_auth.RequireTokenAuthentication),
 			negroni.HandlerFunc(Hello),
-		)).Methods("GET")
+		)).Methods("GET")*/
 	return router
+
 }
 
 func makeHandler(fn func(w http.ResponseWriter, r *http.Request)) http.HandlerFunc {
