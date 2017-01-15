@@ -50,7 +50,7 @@ type Render struct { //for most purposes
 	Average float64 `json:"average"`
 }
 
-//Login handles POST/PUT requests to login. POST requests must consist of User email and password and reply consists of token (200 OK) if email/password combination is correct and 401 Unauthorized if incorrect.
+//Login handles POST requests to login. POST requests must consist of User email and password and reply consists of token (200 OK) if email/password combination is correct and 401 Unauthorized if incorrect.
 func Login(w http.ResponseWriter, r *http.Request /*, next http.HandlerFunc*/) {
 
 	c := appengine.NewContext(r)
@@ -81,26 +81,26 @@ func Login(w http.ResponseWriter, r *http.Request /*, next http.HandlerFunc*/) {
 }
 
 //Refresh handles PUT requests to refresh token
-func Refresh(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+func Refresh(w http.ResponseWriter, r *http.Request /*, next http.HandlerFunc*/) {
 
 	c := appengine.NewContext(r)
-	requestUser := new(tpi_data.User)
-	decoder := json.NewDecoder(r.Body)
-	decoder.Decode(&requestUser)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(tpi_services.RefreshToken(c, requestUser))
+	responseStatus, token := tpi_services.RefreshToken(c, r)
+	w.WriteHeader(responseStatus)
+	w.Write(token)
 
 }
 
-//Logout handles GET requests to logout.
+//Logout handles DELETE requests to logout.
 func Logout(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 
 	c := appengine.NewContext(r)
 	err := tpi_services.Logout(c, r)
-	w.Header().Set("Content-Type", "application/json")
+	//w.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Errorf(c, "logout %v \n", err.Error())
+		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusOK)
 	}
@@ -216,7 +216,7 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 	err = decoder.Decode(g1)
-	log.Errorf(c, "Creating: %v", g1)
+	log.Infof(c, "Creating: %v", g1)
 	if err != nil {
 		log.Errorf(c, "Couldn't decode posted json: %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -499,7 +499,7 @@ func Retrieve(w http.ResponseWriter, r *http.Request) {
 				g1 = g1[1:]
 			}
 			w.WriteHeader(http.StatusOK)
-			if err := enc.Encode(g1); err != nil {
+			if err := enc.Encode(g1[0]); err != nil {
 				log.Errorf(c, "retrieve user response json encode : %v", err)
 			}
 			return
@@ -535,7 +535,7 @@ func Retrieve(w http.ResponseWriter, r *http.Request) {
 				g1 = g1[1:]
 			}
 			w.WriteHeader(http.StatusOK)
-			if err := enc.Encode(g1); err != nil {
+			if err := enc.Encode(g1[0]); err != nil {
 				log.Errorf(c, "retrieve venue response json encode : %v", err)
 			}
 			return
@@ -572,8 +572,47 @@ func Retrieve(w http.ResponseWriter, r *http.Request) {
 				g1 = g1[1:]
 			}
 			w.WriteHeader(http.StatusOK)
-			if err := enc.Encode(g1); err != nil {
+			if err := enc.Encode(g1[0]); err != nil {
 				log.Errorf(c, "retrieve thali response json encode : %v", err)
+			}
+			return
+		}
+	case "RetrieveImage":
+		vars := mux.Vars(r)
+		id, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			log.Errorf(c, "retrieve thali strconv vars : %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Error " + err.Error()}); err1 != nil {
+				log.Errorf(c, "retrieve thali strconv vars json encode: %v", err1)
+			}
+			return
+		}
+		g1 := &tpi_data.Thali{Id: int64(id)}
+		if err = adsc.Get(g1); err != nil {
+			log.Errorf(c, "retrieve image : %v %v ", err, g1.Id)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "retrieve image not found " + string(id)}); err1 != nil {
+				log.Errorf(c, "retrieve image encode dserr : %v", err1)
+			}
+			return
+		}
+		img, err := tpi_data.ReadCloudImage(c, g1.Photo)
+		if err != nil {
+			log.Errorf(c, "retrieve image not found %v \n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "retrieve image not found " + g1.Photo}); err1 != nil {
+				log.Errorf(c, "retrieve image not found dserr : %v", err1)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "image/jpeg")
+		if err = jpeg.Encode(w, *img, nil); err != nil {
+			log.Errorf(c, "retrieve image jpeg encode %v \n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "retrieve image jpeg encode " + strconv.FormatInt(g1.Id, 10)}); err1 != nil {
+				log.Errorf(c, "retrieve image jpeg encode dserr : %v", err1)
 			}
 			return
 		}
@@ -682,7 +721,7 @@ func JSONFilteredList(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//Update updates the posted entity in datastore
+//Update updates the PUT entity in datastore
 func Update(w http.ResponseWriter, r *http.Request) {
 
 	c := appengine.NewContext(r)
@@ -804,7 +843,7 @@ func Update(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		w.WriteHeader(http.StatusAccepted)
-		if err := enc.Encode(g1); err != nil {
+		if err := enc.Encode(g2); err != nil {
 			log.Errorf(c, "update entity encode tpi_data.DSErr: %v", err)
 			return
 		}
@@ -853,8 +892,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		g1 = &tpi_data.User{Id: int64(id)}
 		if err = adsc.Get(g1); err != nil {
 			log.Errorf(c, "delete user : %v", err)
-			w.WriteHeader(http.StatusAccepted)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err1 != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "delete entity not found " + string(id)}); err1 != nil {
 				log.Errorf(c, "delete user encode dserr : %v", err1)
 			}
 			return
@@ -866,8 +905,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		g1 = &tpi_data.Venue{Id: int64(id)}
 		if err = adsc.Get(g1); err != nil {
 			log.Errorf(c, "delete venue : %v", err)
-			w.WriteHeader(http.StatusAccepted)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err1 != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "delete entity not found " + string(id)}); err1 != nil {
 				log.Errorf(c, "delete venue encode dserr : %v", err1)
 			}
 			return
@@ -888,8 +927,8 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		g1 = &tpi_data.Thali{Id: int64(id)}
 		if err = adsc.Get(g1); err != nil {
 			log.Errorf(c, "delete thali : %v", err)
-			w.WriteHeader(http.StatusAccepted)
-			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "Deleted entity " + string(id)}); err1 != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			if err1 := enc.Encode(&tpi_data.DSErr{time.Now(), "delete entity not found " + string(id)}); err1 != nil {
 				log.Errorf(c, "delete thali encode dserr : %v", err1)
 			}
 			return
@@ -929,7 +968,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	log.Errorf(c, "Deleting: %v", h1)
+	log.Infof(c, "Deleting: %v", h1)
 	if err := adsc.Delete(temp); err != nil {
 		log.Errorf(c, "delete entity : %v\n", err)
 		w.WriteHeader(http.StatusBadRequest)

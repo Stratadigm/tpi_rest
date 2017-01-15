@@ -32,6 +32,12 @@ var routes = Routes{
 		Login,
 	},
 	Route{
+		"Refresh",
+		"PUT",
+		"/auth_token",
+		Refresh,
+	},
+	Route{
 		"CreateUser",
 		"POST",
 		"/user",
@@ -83,6 +89,12 @@ var routes = Routes{
 		"RetrieveThali",
 		"GET",
 		"/thali/{id}",
+		Retrieve,
+	},
+	Route{
+		"RetrieveImage",
+		"GET",
+		"/thali/{id}/image",
 		Retrieve,
 	},
 	Route{
@@ -180,15 +192,9 @@ var routes = Routes{
 
 var aroutes = ARoutes{
 	ARoute{
-		"Refresh",
-		"PUT",
-		"/auth_token",
-		Refresh,
-	},
-	ARoute{
 		"Logout",
-		"POST",
-		"/logout",
+		"DELETE",
+		"/auth_token",
 		Logout,
 	},
 	ARoute{

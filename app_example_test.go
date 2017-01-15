@@ -44,7 +44,7 @@ func init() {
 
 }
 
-func ExampleLoginToken() {
+func ExampleToken() {
 
 	var err error
 	var buf bytes.Buffer
@@ -77,7 +77,7 @@ func ExampleLoginToken() {
 	} //else {
 	//	t.Errorf("Json token: %v", tok)
 	//}
-	resp.Body.Close()
+	defer resp.Body.Close()
 
 	err = ioutil.WriteFile("temp", []byte(tok.Token), os.ModePerm)
 	fatal(err)
@@ -124,7 +124,7 @@ func ExampleLoginToken() {
 
 }
 
-func ExampleLoginFail() {
+func ExampleTokenFail() {
 
 	var err error
 
@@ -146,7 +146,7 @@ func ExampleLoginFail() {
 	if err != nil {
 		fmt.Printf("Client do request: %v", err)
 	}
-	defer resp.Body.Close()
+	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("Response: %v", resp.Status)

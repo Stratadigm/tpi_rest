@@ -3,13 +3,15 @@ A cost of living index for cities across India using user contributed / owned da
 
 ## Contents     
 - [Methodology](#methodology)
-- [Data](#data)
 - [JSONAPI](#jsonapi)
     * [Validate](#validate)
     * [Create](#create)
     * [Retrieve](#retrieve)
     * [Update](#update)
     * [Delete](#delete)
+- [Services / Middleware](#services)
+- [Backend](#back)
+- [Data](#data)
 - [URLs](#urls)
 - [App](#app) 
 - [Incentives](#incentives)
@@ -17,7 +19,6 @@ A cost of living index for cities across India using user contributed / owned da
 - [References](#references)  
 
 
-<A name="toc1_1" title="Methodology" />
 ## Methodology ##
 We're a highly stratified society so our thalis are also stratified. A thali can be broadly classified based on the target customer:
 
@@ -39,46 +40,6 @@ Or
 
 After filtering outliers, the price index will be based on a weighted average of the data collected with a Yellow Collar Limited South Indian Thali in Bengaluru in 2016 being the benchmark of 100.  
 
-<A name="toc1_2" title="Data" />
-## Data ##
-In v1 there's three data structures of interest:
-
-+ User
-    + Name string
-    + Email string
-    + Confirmed bool
-    + Thalis []Thali // thalis contributed
-    + Venues []int64 // venues contributed - []int64 due to datastore restriction of no nested slices
-    + Rep int
-    + Submitted time.Time
-
-+ Venue
-    + Name string
-    + Latitude float64 // can be replaced with Location appengine.GeoPoint
-    + Longitude float64 // can be replaced with Location appengine.GeoPoint
-    + Thalis []int64
-    + Submitted time.Time
-
-+ Thali
-    + Name string
-    + Target int // 1-4 target customer profile
-    + Limited bool
-    + Region int // 1-3 target cuisine
-    + Price float64 //
-    + Photo string // filename in GCS
-    + Venueid int64  // available at venue with id
-    + Userid int64 // contributing by user with id
-    + Verified bool
-    + Accepted bool
-    + Submitted time.Time
-
-User -> Thali = One-to-many
-
-We need a appengine datastore access structure and also a Postgres and/or Mongo access structure for deployment in case of move away from Appengine. All in Go.
-
-In the appengine datastore version, Thali is slightly modified to include Id of Venue rather than a Venue (see appengine datastore reference). 
-
-
 ## JSONAPI ##
 
 Data contribution, edit & retrieval is done via a simple HTTP/S REST JSON API. 
@@ -87,15 +48,19 @@ Data contribution, edit & retrieval is done via a simple HTTP/S REST JSON API.
 
 POST : Response codes 200 OK or 401 Unauthorized
 
-/auth_token : Request body must contain Email, Password : Response body contains JSON AuthToken
+/auth_token : POST request body must contain {"email":"jan@uary.com", "password":"allurbase") : Response body contains {"token": "1f7e44..."}
 
-/hello (test URI for token auth) : Request header must contain valid authorization token
+DELETE : Response code 200 OK 
 
-/logout : Request header must contain valid authorization token
+/auth_token : DELETE request header should contain valid authorization (Authorization : Bearer 1f7e44...) token which will then be added to blacklist so can't be used further even if not expired. Always returns 200 OK even if POSTed token in invalid. 
 
-PUT : Response codes 200 OK or 401 Unauthorized
+GET : Response codes 200 OK or 401 Unauthorized
 
-/auth_token : Request header must contain expired token : Response body contains refreshed JSON AuthToken
+/hello (test URI for token auth) : GET Request header must contain valid authorization token (Authorization : Bearer 1f7e44...)
+
+PUT : Response codes 202 Accepted or 401 Unauthorized
+
+/auth_token : PUT request header must contain valid unexpired or recently (less than 1hr ago) expired token which gets extended. 200 response body contains refreshed JSON AuthToken {"token": "1e8432..."}. 401 must login again
 
 ### CREATE ###
 
@@ -111,7 +76,7 @@ POST : Response 201 Created or 4XX Error. Response body contains Id of created e
 
 ### RETRIEVE ###
 
-GET : Response 200 OK or 404 Not Found. Response in json format 
+GET : Response 200 OK or 404 Not Found. Response in json format unless specified otherwise
 
 /users?offset=20
 
@@ -127,7 +92,7 @@ OR
 
 /thalis?offset=20
 
-
+/thali/{id}/image : Response in jpeg encoded bytes
 
 ### UPDATE ###
 
@@ -141,7 +106,7 @@ PUT : Response 202 Accepted if update successful or 4XX Error
 
 ### DELETE ###
 
-DELETE : Response 204 No Content if successful
+DELETE : Response 202 Accepted if successful
 
 /user/{id}?email={email}&fullname={name} : GAE ignores request body in DELETE requests so need to use URL parameters
 
@@ -173,6 +138,70 @@ HTML forms for user/venue/thali creation are available at:
 HTML form for upload of image is available at
 
 /list/thalis : select Upload
+
+/image/{id} : sends GET request. HTML template response with base64 encoded image string
+
+## Services ##
+
+### jwt-go ###
+Used as authorization middleware to protect some handlers. 
+
+## Back ##
+
+Data provider to backends should be made configurable - currently hard coded. 
+
+## Data ##
+In v1 there's three data structures of interest:
+
++ User
+    + Name string
+    + Email string
+    + Confirmed bool
+    + Thalis []Thali // thalis contributed
+    + Venues []int64 // venues contributed - []int64 due to datastore restriction of no nested slices
+    + Rep int
+    + Submitted time.Time
+
++ Venue
+    + Name string
+    + Latitude float64 // can be replaced with Location appengine.GeoPoint
+    + Longitude float64 // can be replaced with Location appengine.GeoPoint
+    + Thalis []int64
+    + Submitted time.Time
+
++ Thali
+    + Name string
+    + Target int // 1-4 target customer profile
+    + Limited bool
+    + Region int // 1-3 target cuisine
+    + Price float64 //
+    + Photo PhotoUrl
+    + Venueid int64  // available at venue with id
+    + Userid int64 // contributing by user with id
+    + Verified bool
+    + Accepted bool
+    + Submitted time.Time
+
+Along with some other structs
+
++ Counter
+    + Users int
+    + Venues int
+    + Thalis int
+
++ PhotoUrl 
+    + Url string
+    + Size Rect
+
++ Rect
+    + W int
+    + H int
+
+User -> Thali = One-to-many
+
+We need a appengine datastore access structure and also a Postgres and/or Mongo access structure for deployment in case of move away from Appengine. All in Go.
+
+In the appengine datastore version, Thali is slightly modified to include Id of Venue rather than a Venue (see appengine datastore reference). 
 
 ## App  ##
 
