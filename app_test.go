@@ -21,7 +21,7 @@ var (
 	id        = int64(0)
 	g1        = &tpi_data.User{Name: "Roger", Email: "jan@uary.com", Password: "allurbase", Confirmed: false, Rep: 0}
 	g2        = &tpi_data.User{Name: "Bob", Email: "jan@uary.com", Password: "allurbase", Confirmed: false, Rep: 0}
-	uri       = "http://192.168.0.9:8080" //"https://2.thalipriceindex.appspot.com"
+	uri       = "http://2.thalipriceindex.appspot.com" //"http://192.168.0.9:8080"
 	prod      = "http://2.thalipriceindex.appspot.com"
 	blacklist = "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE0ODQ0MTA5MDYsIkVtYWlsIjoiamFuQHVhcnkuY29tIiwiVHlwZSI6IkNvbnRyaWJ1dG9yIn0.g6_5-viyOsjCHKu7QFEiI8FkAEVXBSKD0itEAh2C1okW4OSBG0EFCPOuMqXF0voHtFid3UglaZZ44z07CNnATgXfDlVO1ZLNBfebM2xL995i07oaHz3FBAKgdCggm3bBPVIsfUt_8NwqdJuFu9BOKPq4e16yzS-fXAT2PBn8PLU0kxafSnCi8ZDO6r2XvpuriSPRosY1W0oLrQXw8c4fDbI4kNblzWYYzxe4V2zfKFY6ZOEDwMZM96uKamhi_y1D_vWJJQXdh6hrNgu_e9FVSFsSXUDXvACzXQbJ2viJZq5GAfVOkzGq-FJ42ewJ5mOZfjcxJ0-ru1Iro69X9o2JMA"
 )
